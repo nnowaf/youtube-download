@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Downloader</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <style>
+        :root {
+            --primary-color: #ff0000;
+            --secondary-color: #282828;
+            --text-color: #ffffff;
+            --accent-color: #606060;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Roboto', sans-serif;
+            background: linear-gradient(135deg, var(--secondary-color), #000000);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: var(--text-color);
+        }
+
+        .container {
+            width: 90%;
+            max-width: 600px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--primary-color);
+            margin-bottom: 2rem;
+            font-size: 2.5rem;
+        }
+
+        .input-group {
+            position: relative;
+            margin-bottom: 2rem;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid var(--accent-color);
+            border-radius: 10px;
+            color: var(--text-color);
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 15px rgba(255, 0, 0, 0.3);
+        }
+
+        select {
+            width: 100%;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid var(--accent-color);
+            border-radius: 10px;
+            color: var(--text-color);
+            margin-bottom: 1rem;
+            display: none;
+            font-size: 1rem;
+        }
+
+        button {
+            width: 100%;
+            padding: 1rem;
+            border: none;
+            border-radius: 10px;
+            background: var(--primary-color);
+            color: var(--text-color);
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 1rem;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 0, 0, 0.4);
+        }
+
+        .message {
+            text-align: center;
+            margin-top: 1rem;
+            min-height: 24px;
+            color: var(--text-color);
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 1rem 0;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid var(--accent-color);
+            border-top: 4px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .container {
+                width: 95%;
+                padding: 1rem;
+            }
+
+            h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container animate__animated animate__fadeIn">
+        <h1 class="pulse">YouTube Downloader</h1>
+        <div class="input-group">
+            <input type="text" id="videoUrl" placeholder="Paste YouTube URL here..." 
+                   class="fade-in">
+        </div>
+        <button onclick="fetchFormats()" class="fetch-btn fade-in">Fetch Resolutions</button>
+        <select id="formatSelect" class="fade-in"></select>
+        <button onclick="downloadVideo()" class="download-btn fade-in" style="display: none;">
+            Download Video
+        </button>
+        <div class="loading">
+            <div class="loading-spinner"></div>
+        </div>
+        <div id="message" class="message"></div>
+    </div>
+    <script>
+        async function fetchFormats() {
+            const videoUrl = document.getElementById("videoUrl").value;
+            const message = document.getElementById("message");
+            const formatSelect = document.getElementById("formatSelect");
+            const downloadBtn = document.querySelector(".download-btn");
+            const loading = document.querySelector(".loading");
+
+            message.textContent = "";
+            formatSelect.innerHTML = "";
+            formatSelect.style.display = "none";
+            downloadBtn.style.display = "none";
+            loading.style.display = "block";
+
+            if (!videoUrl) {
+                message.textContent = "Please enter a YouTube URL first.";
+                loading.style.display = "none";
+                return;
+            }
+
+            try {
+                const response = await fetch(`http://localhost:3000/formats?url=${encodeURIComponent(videoUrl)}`);
+                const formats = await response.json();
+
+                loading.style.display = "none";
+
+                if (formats.error) {
+                    message.textContent = formats.error;
+                    return;
+                }
+
+                formats.forEach((format) => {
+                    const option = document.createElement("option");
+                    option.value = format.itag;
+                    option.textContent = `${format.qualityLabel} (${format.mimeType.split(';')[0]})`;
+                    formatSelect.appendChild(option);
+                });
+
+                formatSelect.style.display = "block";
+                downloadBtn.style.display = "block";
+                
+                // Add animation classes
+                formatSelect.classList.add("animate__animated", "animate__fadeIn");
+                downloadBtn.classList.add("animate__animated", "animate__fadeIn");
+            } catch (error) {
+                loading.style.display = "none";
+                message.textContent = "Failed to fetch video formats.";
+                console.error(error);
+            }
+        }
+
+        async function downloadVideo() {
+            const videoUrl = document.getElementById("videoUrl").value;
+            const formatSelect = document.getElementById("formatSelect");
+            const selectedFormat = formatSelect.value;
+            const message = document.getElementById("message");
+            const loading = document.querySelector(".loading");
+
+            if (!videoUrl || !selectedFormat) {
+                message.textContent = "Please select a video format.";
+                return;
+            }
+
+            message.textContent = "Starting download...";
+            loading.style.display = "block";
+
+            try {
+                const response = await fetch(`http://localhost:3000/download?url=${encodeURIComponent(videoUrl)}&itag=${selectedFormat}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'video.mp4';
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+
+                loading.style.display = "none";
+                message.textContent = "Download completed successfully!";
+            } catch (error) {
+                loading.style.display = "none";
+                message.textContent = `Download failed: ${error.message}`;
+                console.error('Download error:', error);
+            }
+        }
+
+        // Add input animation
+        const videoUrlInput = document.getElementById("videoUrl");
+        videoUrlInput.addEventListener("focus", () => {
+            videoUrlInput.classList.add("animate__animated", "animate__pulse");
+        });
+
+        videoUrlInput.addEventListener("blur", () => {
+            videoUrlInput.classList.remove("animate__animated", "animate__pulse");
+        });
+    </script>
+</body>
+</html>
